@@ -416,6 +416,15 @@ const actualPlaybackLocation = computed<{
     };
 });
 
+const currentPlaybackChapterId = computed<number | null>(() => {
+    return (
+        actualPlaybackLocation.value?.chapterId ??
+        realtimeCurrentChapterId.value ??
+        realtimeSession.value?.chapterId ??
+        null
+    );
+});
+
 const activePlayingSegment = computed<RealtimeSegmentState | null>(() => {
     const group = playingChapterGroup.value;
     if (!group) return null;
@@ -546,6 +555,31 @@ const showReaderText = computed(
     () => useEdgeReadAloud.value || readerPaneTab.value === "text",
 );
 
+const textHighlightLeadSeconds = 0.2;
+
+const readerTargetsDifferentRealtimeChapter = computed(() => {
+    if (useEdgeReadAloud.value) return false;
+    if (!selectedChapterId.value || !currentPlaybackChapterId.value) return false;
+    return selectedChapterId.value !== currentPlaybackChapterId.value;
+});
+
+const readerPlayButtonIsPlaying = computed(() => {
+    if (useEdgeReadAloud.value) {
+        return edgeReadAloudActive.value;
+    }
+    return !readerTargetsDifferentRealtimeChapter.value && audioIsPlaying.value;
+});
+
+const readerPlayButtonLabel = computed(() => {
+    if (useEdgeReadAloud.value) {
+        return edgeReadAloudActive.value ? "Tạm dừng Edge" : "Phát Edge";
+    }
+    if (readerTargetsDifferentRealtimeChapter.value) {
+        return "Phát chương này";
+    }
+    return audioIsPlaying.value ? "Tạm dừng" : "Phát";
+});
+
 // Calculate dynamic segment status based on actual playback position
 // Returns: "reading" | "played" | "queued"
 function getDynamicSegmentStatus(
@@ -648,7 +682,18 @@ const activeWordGlobalIndex = computed<number | null>(() => {
         startWord += segment.wordCount;
     }
 
-    const progress = Math.min(0.999, Math.max(0, playback.progress));
+    const segmentDuration = Math.max(
+        0.8,
+        getApproxSegmentDuration(targetSegment),
+    );
+    // Đẩy highlight đi sớm hơn một nhịp nhỏ để mắt bám sát tiếng đọc hơn.
+    const progress = Math.min(
+        0.999,
+        Math.max(
+            0,
+            playback.progress + textHighlightLeadSeconds / segmentDuration,
+        ),
+    );
     const offset = Math.min(
         targetSegment.wordCount - 1,
         Math.floor(progress * targetSegment.wordCount),
@@ -2360,6 +2405,30 @@ function togglePlayback() {
         userPausedAudio = true;
         audioRef.value.pause();
     }
+}
+
+async function handleReaderPlayAction() {
+    if (useEdgeReadAloud.value) {
+        togglePlayback();
+        return;
+    }
+
+    const targetChapterId = selectedChapterId.value;
+    if (
+        readerTargetsDifferentRealtimeChapter.value &&
+        targetChapterId !== null
+    ) {
+        const targetGroup =
+            sortedRealtimeChapterGroups.value.find(
+                (group) => group.chapterId === targetChapterId,
+            ) ?? null;
+        const startSegmentIndex = targetGroup?.startSegmentIndex ?? 0;
+        toast.info("Chuyển sang đọc chương đang mở.");
+        await jumpToRealtimeSegment(targetChapterId, startSegmentIndex);
+        return;
+    }
+
+    togglePlayback();
 }
 
 function seekAudio(event: MouseEvent) {
@@ -4512,6 +4581,16 @@ onUnmounted(() => {
                                 </div>
 
                                 <div class="reader-actions">
+                                    <button
+                                        class="ghost-button reader-play-button"
+                                        :class="{
+                                            'is-playing':
+                                                readerPlayButtonIsPlaying,
+                                        }"
+                                        @click="handleReaderPlayAction"
+                                    >
+                                        {{ readerPlayButtonLabel }}
+                                    </button>
                                     <div class="reader-font-controls">
                                         <span>Cỡ chữ</span>
                                         <button
@@ -5310,6 +5389,16 @@ button:disabled {
 .reader-font-controls strong {
     font-size: 0.82rem;
     color: var(--text-secondary);
+}
+
+.reader-play-button {
+    min-width: 8rem;
+}
+
+.reader-play-button.is-playing {
+    color: #eff6ff;
+    border-color: rgba(96, 165, 250, 0.5);
+    background: rgba(59, 130, 246, 0.18);
 }
 
 .reader-font-controls strong {

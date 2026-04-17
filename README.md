@@ -132,6 +132,7 @@ docker compose down
 - Frontend gọi trực tiếp realtime service bằng `HTTP + WebSocket`, nhận chunk `audio/mpeg` và phát liền mạch qua `MediaSource`.
 - UI không tự nhảy chapter chỉ vì backend render ahead. Reader chỉ tự chuyển chapter khi `audio đang phát thực tế` đã sang chapter mới.
 - Nút `Trước/Sau` khi realtime đang chạy chỉ đổi chapter hiển thị trong reader, không restart session realtime và không làm render lại pipeline hiện tại.
+- Khi đang xem một chapter khác với chapter audio hiện tại, nút `Phát` trong pane `Đọc chữ` sẽ chuyển playback sang chapter đang mở thay vì resume chapter cũ.
 - Panel realtime của chapter đang mở hiển thị toàn bộ các segment đã được nạp/render tính từ đoạn bắt đầu đọc, để theo dõi rõ audio đã tạo tới đâu và đang phát tới đâu.
 - Panel realtime được nhóm theo từng chapter để nhìn rõ đã nạp/render tới chapter nào, chapter nào đang phát và chapter nào đã hoàn tất.
 - Mỗi segment có progress bar riêng cho `tạo audio` và `đang đọc`, giúp nhìn rõ voice đang đọc tới đâu và audio đã render tới đâu trong chapter hiện tại.

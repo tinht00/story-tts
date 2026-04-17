@@ -749,15 +749,16 @@ class RuntimeSession:
             except Exception:
                 logger.exception("Không dừng được realtime stream")
 
-    def emit_event(self, payload: dict[str, Any]) -> None:
+    def emit_event(self, payload: dict[str, Any], epoch: int | None = None) -> None:
         self.updated_at = now_iso()
         # Don't emit if session is closed or loop/outbox not ready
         if self.closed.is_set():
             return
         if not self.loop or not self.outbox:
             return
-        with self.lock:
-            epoch = self.stream_epoch
+        if epoch is None:
+            with self.lock:
+                epoch = self.stream_epoch
         try:
             asyncio.run_coroutine_threadsafe(
                 self.outbox.put(
@@ -768,11 +769,12 @@ class RuntimeSession:
         except Exception as e:
             logger.debug("Failed to emit event %s: %s", payload.get("type"), e)
 
-    def emit_audio(self, payload: bytes) -> None:
+    def emit_audio(self, payload: bytes, epoch: int | None = None) -> None:
         if not payload or not self.loop or not self.outbox:
             return
-        with self.lock:
-            epoch = self.stream_epoch
+        if epoch is None:
+            with self.lock:
+                epoch = self.stream_epoch
         asyncio.run_coroutine_threadsafe(
             self.outbox.put({"kind": "audio", "payload": payload, "epoch": epoch}),
             self.loop,
@@ -1133,6 +1135,9 @@ class RuntimeSession:
         3. Sau khi đọc đoạn N → đảm bảo đã render xong đoạn N+1
         4. Continue cho đến hết, đảm bảo không sót đoạn nào
         """
+        with self.lock:
+            chapter_epoch = self.stream_epoch
+
         # Chia chapter thành các đoạn theo word count
         segments = split_chapter_into_segments(chapter.text)
         if not segments:
@@ -1212,7 +1217,8 @@ class RuntimeSession:
                     for index, segment in enumerate(segments)
                 ],
                 "startSegmentIndex": self.current_segment_index,
-            }
+            },
+            epoch=chapter_epoch,
         )
 
         interrupted = False
@@ -1275,7 +1281,8 @@ class RuntimeSession:
                     "segmentText": rendered.text[:200],
                     "wordCount": len(rendered.text.split()),
                     "durationEstimate": rendered.duration_estimate,
-                }
+                },
+                epoch=segment_epoch,
             )
 
             # Gửi audio data
@@ -1293,7 +1300,7 @@ class RuntimeSession:
                         interrupted_by_seek = True
                         break
                 chunk = rendered.audio_data[offset : offset + chunk_size]
-                self.emit_audio(chunk)
+                self.emit_audio(chunk, epoch=segment_epoch)
                 # Sleep nhỏ để tránh gửi quá nhanh
                 time.sleep(0.001)
 
@@ -1312,7 +1319,8 @@ class RuntimeSession:
                     "chapterId": chapter.chapterId,
                     "chapterIndex": chapter.chapterIndex,
                     "segmentIndex": seg_idx,
-                }
+                },
+                epoch=segment_epoch,
             )
 
             self.render_futures.pop(seg_idx, None)
