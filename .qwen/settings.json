@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(data\\run\\tts-venv\\scripts\\python.exe *)",
+      "Bash(taskkill *)",
+      "Bash(tasklist)",
+      "Bash(edge-tts *)",
+      "Bash(d:\\tinht00_workspace\\vibecode\\story-tts\\data\\run\\tts-venv\\scripts\\python.exe *)",
+      "Read(C:\\Users\\IT-01\\.qwen/**)",
+      "Bash(git config *)"
+    ]
+  },
+  "$version": 3
+}

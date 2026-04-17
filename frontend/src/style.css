@@ -1,0 +1,104 @@
+:root {
+  /* Dark Mode Theme (Navy / Slate Blue) */
+  --bg-primary: #0f172a; /* Slate 900 */
+  --bg-panel: #1e293b; /* Slate 800 */
+  --bg-panel-hover: #334155; /* Slate 700 */
+  --bg-active: #3b82f6; /* Blue 500 */
+  --bg-active-hover: #60a5fa; /* Blue 400 */
+  --text-primary: #f8fafc; /* Slate 50 */
+  --text-secondary: #94a3b8; /* Slate 400 */
+  --text-active: #ffffff;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --border: rgba(148, 163, 184, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -2px rgba(0,0,0,0.2);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  
+  --font-sans: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, system-ui, -apple-system, sans-serif;
+  --font-serif: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  background-color: var(--bg-primary);
+  background-image: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select {
+  font-family: inherit;
+}
+
+/* Base custom scrollbar for better appearance */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.hidden-input {
+  display: none;
+}
+
+.reader-heading {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.reader-paragraph {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 2;
+  text-align: justify;
+  text-indent: 1.8rem;
+  text-wrap: pretty;
+  transition: all 0.3s ease;
+}
+
+.reader-heading.active-reading,
+.reader-paragraph.active-reading {
+  background-color: rgba(96, 165, 250, 0.15); /* Soft blue tint */
+  color: var(--accent-hover);
+  padding: 0.25rem 0.5rem;
+  margin: -0.25rem -0.5rem 1rem; /* Offset padding */
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3);
+}

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(data\\run\\tts-venv\\scripts\\python.exe *)"
+    ]
+  }
+}

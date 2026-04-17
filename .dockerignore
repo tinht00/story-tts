@@ -1,0 +1,16 @@
+.git
+.gitignore
+.codex
+.agent
+docs
+frontend/node_modules
+frontend/dist
+data/run
+data/*.log
+backend/.env
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules

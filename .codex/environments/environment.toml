@@ -1,0 +1,5 @@
+name = "story-tts"
+
+setup_script = """
+powershell -ExecutionPolicy Bypass -File .codex/environments/setup.ps1
+"""
