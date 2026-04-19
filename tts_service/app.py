@@ -964,6 +964,15 @@ class RuntimeSession:
                 or self.pending_segment_index is None
             ):
                 return False
+            if self.pending_index is None or not (
+                0 <= self.pending_index < len(self.chapters)
+            ):
+                return False
+            # Chỉ coi là "same chapter seek" khi worker hiện tại thực sự đang xử lý
+            # đúng chapter đích. Nếu chapter context cũ vẫn còn chạy, hãy để
+            # _stream_chapter trả về "skipped" để outer loop chuyển chapter sạch sẽ.
+            if self.chapters[self.pending_index].chapterId != chapter.chapterId:
+                return False
             target_segment_index = max(
                 0, min(self.pending_segment_index, self.total_segments - 1)
             )

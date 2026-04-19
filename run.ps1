@@ -98,6 +98,26 @@ function Get-FrontendDevPort {
     return 5174
 }
 
+function Resolve-CommandPath {
+    param(
+        [string]$Name,
+        [string[]]$Candidates = @()
+    )
+
+    foreach ($candidate in $Candidates) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    return $null
+}
+
 function Start-DevWindow {
     param(
         [string]$Title,
@@ -157,6 +177,17 @@ $backendDir = Join-Path $repoRoot "backend"
 $frontendDir = Join-Path $repoRoot "frontend"
 $ttsPython = Join-Path $repoRoot "data/run/tts-venv/Scripts/python.exe"
 $ttsEdgeBinary = Join-Path $repoRoot "data/run/tts-venv/Scripts/edge-tts.exe"
+$goCommand = Resolve-CommandPath -Name "go" -Candidates @(
+    "C:\Program Files\Go\bin\go.exe",
+    "C:\Program Files (x86)\Go\bin\go.exe"
+)
+$npmCommand = Resolve-CommandPath -Name "npm.cmd" -Candidates @(
+    "C:\Program Files\nodejs\npm.cmd"
+)
+$pythonCommand = Resolve-CommandPath -Name "python" -Candidates @(
+    "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python313\python.exe",
+    "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python312\python.exe"
+)
 
 $effectiveEnv = Get-EffectiveStoryTtsEnv -RepoRoot $repoRoot
 $backendPort = Resolve-PortFromListenAddr -ListenAddr $effectiveEnv["STORY_TTS_LISTEN_ADDR"] -Fallback 18080
@@ -169,7 +200,12 @@ if (-not (Test-Path (Join-Path $backendDir ".env")) -and (Test-Path (Join-Path $
 }
 
 if (-not (Test-Path $ttsPython)) {
-    $ttsPython = "python"
+    if ($pythonCommand) {
+        $ttsPython = $pythonCommand
+    }
+    else {
+        $ttsPython = "python"
+    }
 }
 if (-not (Test-Path $ttsEdgeBinary) -and $effectiveEnv.ContainsKey("STORY_TTS_EDGE_BINARY")) {
     $configuredEdgeBinary = [string]$effectiveEnv["STORY_TTS_EDGE_BINARY"]
@@ -185,6 +221,8 @@ $ttsEdgeBinaryEscaped = $ttsEdgeBinary -replace "'", "''"
 $repoRootEscaped = $repoRoot -replace "'", "''"
 $backendDirEscaped = $backendDir -replace "'", "''"
 $frontendDirEscaped = $frontendDir -replace "'", "''"
+$goCommandEscaped = if ($goCommand) { $goCommand -replace "'", "''" } else { "go" }
+$npmCommandEscaped = if ($npmCommand) { $npmCommand -replace "'", "''" } else { "npm" }
 $ttsVoice = if ($effectiveEnv.ContainsKey("STORY_TTS_REALTIME_TTS_VOICE")) { [string]$effectiveEnv["STORY_TTS_REALTIME_TTS_VOICE"] } else { "vi-VN-NamMinhNeural" }
 $ttsSpeed = if ($effectiveEnv.ContainsKey("STORY_TTS_REALTIME_TTS_SPEED")) { [string]$effectiveEnv["STORY_TTS_REALTIME_TTS_SPEED"] } else { "0" }
 $ttsPitch = if ($effectiveEnv.ContainsKey("STORY_TTS_REALTIME_TTS_PITCH")) { [string]$effectiveEnv["STORY_TTS_REALTIME_TTS_PITCH"] } else { "0" }
@@ -208,15 +246,15 @@ Set-Location '$repoRootEscaped'
 
 $backendCommand = @"
 Set-Location '$backendDirEscaped'
-go run ./cmd/api
+& '$goCommandEscaped' run ./cmd/api
 "@
 
 $frontendCommand = @"
 Set-Location '$frontendDirEscaped'
 if (-not (Test-Path 'node_modules')) {
-    npm install
+    & '$npmCommandEscaped' install
 }
-npm run dev
+& '$npmCommandEscaped' run dev
 "@
 
 Write-Host ""

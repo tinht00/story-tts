@@ -35,3 +35,4 @@ Ghi nhanh cách chạy local và các lệnh kiểm tra cơ bản của dự án
 - Nếu dự án có FE và BE riêng, ghi rõ command cho từng phần.
 - Khi cần verify end-to-end audio, phải có `ffmpeg` và `edge-tts` thật trên máy.
 - Với Codex environment, ưu tiên dùng `.codex/environments/environment.toml` và `.codex/environments/setup.ps1` để bootstrap worktree mới.
+- Nếu Windows terminal/action chưa nhận PATH mới sau khi cài runtime, ưu tiên `.\run.ps1`; script sẽ tự thử `go.exe` và `npm.cmd` theo đường dẫn cài chuẩn.

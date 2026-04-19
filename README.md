@@ -137,6 +137,9 @@ docker compose down
 - Panel realtime được nhóm theo từng chapter để nhìn rõ đã nạp/render tới chapter nào, chapter nào đang phát và chapter nào đã hoàn tất.
 - Mỗi segment có progress bar riêng cho `tạo audio` và `đang đọc`, giúp nhìn rõ voice đang đọc tới đâu và audio đã render tới đâu trong chapter hiện tại.
 - Có thể click trực tiếp vào bất kỳ segment nào trong panel để nhảy tới đúng chapter/segment; nếu audio của segment đó đã render xong thì frontend/service sẽ ưu tiên tái dùng cache hiện có thay vì render lại từ đầu.
+- Khi click một segment chưa `ready`, frontend vẫn giữ nguyên session realtime hiện tại và gọi `seek` trên session đó, để service tận dụng cache/render state đang có thay vì dừng session rồi tạo session mới từ đầu.
+- Khi người dùng click sang segment/chapter khác, reader sẽ giữ chapter vừa chọn trong lúc seek đang chờ; watcher auto-sync không được kéo UI quay về chapter cũ trước khi audio thật sự bắt đầu ở mục tiêu mới.
+- Frontend tách riêng `chapter đang buffer ahead` khỏi `chapter audio đang phát thực tế`; progress được lưu theo chapter audio thực tế, không còn bám nhầm vào chapter đang hiển thị hoặc chapter backend mới bắt đầu nạp trước.
 - Service realtime dùng cơ chế `15 / 10 / 10`: khởi tạo trước `15` segment tính từ vị trí bắt đầu đọc; khi phần ahead còn khoảng `10` segment thì nạp tiếp `10` segment kế tiếp.
 - Có nút `Đọc từ bôi chọn` trong reader để lấy vùng người dùng đang chọn, map về segment tương ứng và tiếp tục đọc từ đó.
 - Highlight trong reader chuyển sang mức `từng chữ` dựa trên segment đang phát và tiến độ audio ước lượng, thay vì tô cả đoạn/block như trước.
@@ -144,6 +147,8 @@ docker compose down
 - Người dùng có thể chọn giọng, chỉnh tốc độ và cao độ trước khi bắt đầu phiên đọc; mặc định hiện tại là `vi-VN-NamMinhNeural`.
 - Khi bật `Read Aloud` của Edge, app sẽ quét toàn bộ khối chữ của chương hiện tại trước khi gửi phím tắt và có nút `Quét khối chữ` để chọn lại vùng đọc nếu cần.
 - `STORY_TTS_REALTIME_TTS_BASE_URL` phải trỏ đúng về service Python nếu đổi port hoặc host.
+- Với Windows vừa mới cài hoặc nâng cấp runtime, `.\run.ps1` sẽ ưu tiên gọi trực tiếp binary chuẩn như `C:\Program Files\Go\bin\go.exe` và `C:\Program Files\nodejs\npm.cmd` để tránh lỗi terminal/action còn giữ `PATH` cũ.
+- Nếu Vite dev server trên máy Windows trả lỗi với `/@vite/client`, frontend đã có fallback middleware trong `vite.config.ts` để phục vụ trực tiếp `@vite/client` và `@vite/env`, tránh lỗi 404 làm hỏng trang dev.
 
 ## Tài liệu điều hướng
 - [AGENTS.md](D:/Tinht00_Workspace/Projects/story-tts/AGENTS.md)

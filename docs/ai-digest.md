@@ -41,4 +41,11 @@
 - Notebook canonical đã tồn tại thật với ID `04b036e8-540b-43f7-999a-3d3e1dd8a747`.
 - `ffmpeg` cần có trên PATH nếu chapter dài bị chia nhiều segment và cần merge lại thành một file MP3.
 - `tts_service` ưu tiên binary `edge-tts` trong `data/run/tts-venv`, nên worktree mới nên chạy `.codex/environments/setup.ps1` trước khi verify end-to-end audio.
+- `run.ps1` và `.codex/environments/setup.ps1` đã fallback sang binary `go.exe` và `npm.cmd` chuẩn trên Windows để giảm lỗi do terminal cũ chưa nhận PATH mới.
+- `frontend/vite.config.ts` có middleware fallback cho `/@vite/client` và `/@vite/env` khi dev server trên Windows không tự trả đúng module HMR.
+- `frontend/src/App.vue` ưu tiên `seek` trên session realtime hiện tại cho cả segment đã render lẫn segment chưa `ready`, để không làm mất cache pipeline khi người dùng click segment khác.
+- `frontend/src/App.vue` khóa tạm watcher auto-sync chapter trong lúc người dùng `seek` sang segment/chapter khác, tránh việc UI bị kéo ngược về chapter cũ dù audio mục tiêu đang chuẩn bị phát đúng.
+- `frontend/src/App.vue` tách `chapter backend đang nạp ahead` khỏi `chapter audio đang phát thực tế`, đồng thời lưu progress theo chapter audio thực tế thay vì chapter vừa được service phát event `chapter_started`.
+- `frontend/src/App.vue` có watchdog fallback cho seek realtime: nếu click segment hoặc `Đọc từ bôi chọn` mà session hiện tại không phát được đúng segment mục tiêu trong thời gian ngắn, frontend sẽ tự restart playback từ đúng chapter/segment đã chọn thay vì đứng im.
+- `tts_service/app.py` chặn worker cũ nuốt nhầm `same chapter seek` khi người dùng click một segment đã cache ở chapter khác. Nếu chapter context chưa khớp chapter đích, service phải để `_stream_chapter` trả về `skipped` để outer loop chuyển chapter sạch sẽ; nếu không có thể xảy ra hiện tượng phát đúng segment đã click rồi không phát tiếp đúng luồng.
 - Đây là dự án độc lập; các tham chiếu tới `andon-tts-web-api` chỉ nhằm tái sử dụng pattern kỹ thuật.

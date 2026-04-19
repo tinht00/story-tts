@@ -12,6 +12,27 @@ $venvEdge = Join-Path $venvDir "Scripts\edge-tts.exe"
 $backendEnv = Join-Path $backendDir ".env"
 $backendEnvExample = Join-Path $backendDir ".env.example"
 
+function Resolve-ExistingCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$Candidates = @()
+    )
+
+    foreach ($candidate in $Candidates) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    return $null
+}
+
 function Invoke-NativeOrThrow {
     param(
         [Parameter(Mandatory = $true)]
@@ -21,12 +42,13 @@ function Invoke-NativeOrThrow {
 
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Lệnh thất bại: $Command $($Arguments -join ' ')"
+        throw "Lenh that bai: $Command $($Arguments -join ' ')"
     }
 }
 
 function Resolve-PythonCommand {
     $candidates = @(
+        @{ Command = "C:\Users\$env:USERNAME\AppData\Local\Programs\Python\Python313\python.exe"; Args = @() },
         @{ Command = "py"; Args = @("-3.13") },
         @{ Command = "py"; Args = @("-3") },
         @{ Command = "python"; Args = @() }
@@ -41,8 +63,12 @@ function Resolve-PythonCommand {
         }
     }
 
-    throw "Không tìm thấy Python 3 để tạo venv cho tts_service."
+    throw "Khong tim thay Python 3 de tao venv cho tts_service."
 }
+
+$npmCommand = Resolve-ExistingCommand -Name "npm.cmd" -Candidates @(
+    "C:\Program Files\nodejs\npm.cmd"
+)
 
 if (-not (Test-Path $backendEnv) -and (Test-Path $backendEnvExample)) {
     Copy-Item $backendEnvExample $backendEnv
@@ -75,7 +101,10 @@ if (Test-Path $backendEnv) {
 if (-not (Test-Path (Join-Path $frontendDir "node_modules"))) {
     Push-Location $frontendDir
     try {
-        Invoke-NativeOrThrow -Command "npm" -Arguments @("install")
+        if (-not $npmCommand) {
+            throw "Khong tim thay npm.cmd de cai dependency frontend."
+        }
+        Invoke-NativeOrThrow -Command $npmCommand -Arguments @("install")
     }
     finally {
         Pop-Location
