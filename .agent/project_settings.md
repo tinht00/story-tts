@@ -2,9 +2,9 @@
 
 ## Tóm tắt dự án
 - Tên dự án: `story-tts`
-- Mô tả ngắn: `Thư viện TTS đọc truyện từ thư mục TXT theo chương, sinh audio từng chương và audio gộp full book.`
-- Stack chính: `Go + Gin, Vue 3 + Vite, ffmpeg, edge-tts compatible providers`
-- Repo hoặc module chính: `D:\Tinht00_Workspace\Projects\story-tts`
+- Mô tả ngắn: `Thư viện local để import truyện TXT theo chapter, đọc trực tiếp trong web app và phát realtime TTS theo chapter/segment.`
+- Stack chính: `Go + Gin, Vue 3 + Vite, FastAPI, SQLite, edge_tts, ffmpeg`
+- Repo hoặc module chính: `D:\Tinht00_Workspace\VibeCode\story-tts`
 
 ## Quy ước làm việc
 - Ưu tiên dùng source code để xác minh implementation hiện tại.

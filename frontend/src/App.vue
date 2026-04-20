@@ -546,6 +546,53 @@ const visiblePlayingSegmentRange = computed(() => {
     return getVisibleSegmentRangeForGroup(playingChapterGroup.value);
 });
 
+function getRealtimeChapterSortWeight(group: RealtimeChapterSegmentGroup) {
+    if (currentPlaybackChapterId.value === group.chapterId) {
+        return 0;
+    }
+    if (
+        selectedChapterId.value === group.chapterId &&
+        selectedChapterId.value !== currentPlaybackChapterId.value
+    ) {
+        return 1;
+    }
+    if (
+        realtimeBufferedChapterId.value === group.chapterId &&
+        realtimeBufferedChapterId.value !== currentPlaybackChapterId.value
+    ) {
+        return 2;
+    }
+    if (
+        currentPlaybackChapterGroup.value &&
+        group.chapterIndex > currentPlaybackChapterGroup.value.chapterIndex
+    ) {
+        return 3;
+    }
+    return 4;
+}
+
+function shouldShowRealtimeChapterGroup(entry: {
+    group: RealtimeChapterSegmentGroup;
+    window: ReturnType<typeof getVisibleSegmentWindowForGroup>;
+}) {
+    if (entry.window.items.length === 0) return false;
+
+    const playbackGroup = currentPlaybackChapterGroup.value;
+    if (!playbackGroup) return true;
+
+    if (entry.group.chapterId === playbackGroup.chapterId) return true;
+    if (entry.group.chapterId === selectedChapterId.value) return true;
+    if (entry.group.chapterId === realtimeBufferedChapterId.value) return true;
+
+    // Ẩn chapter đã nằm phía sau chapter audio hiện tại để panel chính không
+    // bị lẫn giữa phần đã đọc xong và phần đang phát/sắp phát.
+    if (entry.group.chapterIndex < playbackGroup.chapterIndex) {
+        return false;
+    }
+
+    return true;
+}
+
 const renderChapterGroups = computed(() =>
     sortedRealtimeChapterGroups.value
         .map((group) => ({
@@ -555,7 +602,14 @@ const renderChapterGroups = computed(() =>
             displayState: getRealtimeChapterDisplayState(group),
             isPlaybackChapter: currentPlaybackChapterId.value === group.chapterId,
         }))
-        .filter((entry) => entry.window.items.length > 0),
+        .filter((entry) => shouldShowRealtimeChapterGroup(entry))
+        .sort((left, right) => {
+            const weightDiff =
+                getRealtimeChapterSortWeight(left.group) -
+                getRealtimeChapterSortWeight(right.group);
+            if (weightDiff !== 0) return weightDiff;
+            return left.group.chapterIndex - right.group.chapterIndex;
+        }),
 );
 
 const bufferedAheadSummary = computed(() => {
@@ -631,6 +685,14 @@ function getDynamicSegmentStatus(
         if (segmentIndex === actual.segmentIndex) {
             return "reading";
         }
+    }
+    if (
+        currentPlaybackChapterGroup.value &&
+        group &&
+        group.chapterId !== currentPlaybackChapterGroup.value.chapterId &&
+        group.chapterIndex < currentPlaybackChapterGroup.value.chapterIndex
+    ) {
+        return "played";
     }
     if (segment?.status === "rendering" || segment?.status === "retrying") {
         return segment.status;
@@ -2824,7 +2886,15 @@ async function startRealtimePlayback(
     error.value = "";
 
     try {
-        await stopRealtimePlayback({ quiet: true, clearSession: true });
+        // Chỉ await stop khi thật sự có phiên cũ để không làm mất user gesture.
+        if (
+            realtimeSession.value?.id ||
+            activeSocket ||
+            activeMediaSource ||
+            activeMediaUrl
+        ) {
+            await stopRealtimePlayback({ quiet: true, clearSession: true });
+        }
         resetRealtimeSegments();
         realtimeStatus.value = "connecting";
         await prepareRealtimeMediaStream();
@@ -3029,6 +3099,13 @@ async function prepareRealtimeMediaStream(
     queuedAudioChunks = [];
     isPlaybackActive = true;
 
+    // Gắn MediaSource vào audio trước khi chờ sourceopen, nếu không sourceopen
+    // sẽ không bao giờ nổ đúng thời điểm và browser cũng không thể prime playback.
+    audioRef.value.src = activeMediaUrl;
+    audioRef.value.autoplay = false;
+    audioRef.value.load();
+    void resumeRealtimeAudioPlayback();
+
     console.log("[MediaStream] MediaSource created, waiting for sourceopen...");
 
     // Đợi sourceopen event với timeout dài hơn (30s) để tránh timeout khi backend retry
@@ -3109,10 +3186,6 @@ async function prepareRealtimeMediaStream(
             { once: true },
         );
     }
-
-    audioRef.value.src = activeMediaUrl;
-    audioRef.value.autoplay = false;
-    audioRef.value.load();
 
     console.log(
         "[MediaStream] Audio player setup complete, waiting for backend audio chunks...",
@@ -3248,6 +3321,7 @@ function flushAudioChunkQueue() {
     // Nhưng KHÔNG reset audio element - giữ nguyên currentTime
     if (
         remainingBuffer < 2 &&
+        currentTime > 0.05 &&
         audioRef.value &&
         !audioRef.value.paused &&
         !userPausedAudio
@@ -4569,20 +4643,9 @@ onUnmounted(() => {
                                             </div>
                                             <span
                                                 class="segment-status-badge"
-                                                :class="`is-${entry.group.status === 'completed' ? 'played' : entry.group.status}`"
+                                                :class="`is-${entry.displayState.tone}`"
                                             >
-                                                {{
-                                                    entry.group.status ===
-                                                    "reading"
-                                                        ? "Đang đọc"
-                                                        : entry.group.status ===
-                                                            "rendering"
-                                                          ? "Đang tạo tiếp"
-                                                          : entry.group.status ===
-                                                              "completed"
-                                                            ? "Đã xong"
-                                                            : "Đã tách"
-                                                }}
+                                                {{ entry.displayState.label }}
                                             </span>
                                         </div>
 
@@ -4592,7 +4655,7 @@ onUnmounted(() => {
                                                 :key="`${entry.group.chapterId}-segment-${segment.index}`"
                                                 class="segment-status-item"
                                                 :class="[
-                                                    `is-${segment.status}`,
+                                                    `is-${getDynamicSegmentStatus(segment.index, entry.group.chapterId)}`,
                                                     {
                                                         'is-active':
                                                             isSegmentNowPlaying(

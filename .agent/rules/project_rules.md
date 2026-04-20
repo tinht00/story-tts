@@ -2,35 +2,46 @@
 
 ## 1. Tổng quan
 - Tên dự án: `story-tts`
-- Domain nghiệp vụ: `thư viện TTS đọc truyện dài từ file TXT theo chương`
-- Stack chính: `Go + Gin, Vue 3 + Vite, ffmpeg, edge-tts compatible providers`
+- Domain nghiệp vụ: `thư viện local để đọc truyện TXT theo chapter và phát realtime TTS`
+- Stack chính: `Go + Gin, Vue 3 + Vite, FastAPI, SQLite, edge_tts, ffmpeg`
 
 ## 2. Cấu trúc thư mục quan trọng
-- `AGENTS.md`: router gốc và mapping NotebookLM canonical của dự án
+- `AGENTS.md`: router gốc và mapping NotebookLM canonical
 - `.agent/`: governance, rules, workflow phát triển
-- `docs/`: digest, TODO, các tài liệu API/flow/decision của dự án
-- `backend/`: API, job orchestration, parser TXT, provider edge, Telegram session và audio pipeline
-- `frontend/`: UI quản lý thư viện truyện, job synthesize, Telegram auth và preview nghe thử
+- `docs/`: digest, architecture, decision log, runtime cases, TODO
+- `backend/`: API import thư viện, content, progress và phần legacy còn tạm giữ
+- `frontend/`: UI reader, realtime panel, MediaSource player, Edge Read Aloud fallback
+- `tts_service/`: realtime session service dùng `edge_tts`
 
 ## 3. Quy ước kỹ thuật bắt buộc
-- Không mô tả nhầm định hướng thành implementation thật khi repo chưa có code.
-- V1 ưu tiên `edge-only`, nhưng phải giữ abstraction provider để sau này thêm nguồn TTS khác mà không phá contract nội bộ.
-- Input chuẩn của thư viện là `1 thư mục truyện` chứa nhiều file TXT theo chương; tên file và metadata phải đủ ổn định để rerun theo chương.
-- Output chuẩn phải có `audio từng chương` và `audio gộp full book`; pipeline merge audio phải tách biệt khỏi bước synthesize từng chunk/chương.
-- Bài toán chính là đọc truyện dài, nên thiết kế phải có chunking an toàn, retry từng phần và trạng thái job rõ ràng.
+- Source code hiện tại là nguồn sự thật cho runtime.
+- Luồng chính phải được mô tả là `folder picker -> import TXT -> reader -> realtime TTS -> progress`.
+- Không mô tả nhầm đường chính thành pipeline MP3 legacy của backend Go.
+- Provider thực tế của đường chính hiện tại là `edge_tts` Python API qua `tts_service`.
+- Frontend phải phân biệt rõ `chapter đang xem`, `chapter đang preload`, `chapter audio đang phát thực tế`.
+- Seek phải ưu tiên tái dùng session/cache hiện có; chỉ restart playback khi seek hiện tại không còn đi đúng mục tiêu.
+- Với lỗi render segment, worker không được tự bỏ qua segment hiện tại nếu chưa có lệnh dừng/seek mới.
 
 ## 4. Quy ước môi trường
-- Cổng local: backend `18080`, frontend `5174`
-- Env quan trọng: dự kiến gồm biến cho provider TTS, thư mục input TXT, thư mục output audio và binary `ffmpeg`
-- Service phụ thuộc: `NotebookLM`, provider TTS, `ffmpeg`; database/queue sẽ chốt khi có implementation thật
+- Cổng local mặc định:
+  - backend `18080`
+  - realtime TTS service `8010`
+  - frontend dev `5174`
+- Env quan trọng:
+  - `STORY_TTS_REALTIME_TTS_BASE_URL`
+  - binary `ffmpeg`
+  - Python venv tại `data/run/tts-venv`
 
 ## 5. Quy ước deploy và vận hành
-- Chưa chốt deploy thật ở thời điểm bootstrap.
-- Khi triển khai thực tế, phải ghi rõ app chạy bằng Docker hay bare-metal, thư mục mount nào chứa TXT/audio và credential provider nằm ở đâu.
-- Nếu dùng provider trả phí hoặc key nhạy cảm, secret chỉ đi qua env hoặc mount ngoài repo.
-- Khi có CI/CD hoặc compose file, phải cập nhật lại file này để làm nguồn chuẩn.
+- `run.ps1` là điểm vào local mặc định.
+- Khi runtime hoặc luồng chính thay đổi, phải cập nhật tối thiểu:
+  - `README.md`
+  - `docs/architecture-v1.md`
+  - `docs/realtime-runtime.md`
+  - `docs/decision-log.md`
+- Nếu một case lỗi có giá trị tái sử dụng đã được chốt nguyên nhân gốc và cách sửa, phải ghi lại vào `docs/realtime-runtime.md`.
 
 ## 6. Điều cấm hoặc cần lưu ý
-- Không commit credential hoặc cookie NotebookLM/TTS vào repo.
-- Không dùng NotebookLM để suy diễn runtime nếu source code hoặc config thực tế nói khác.
-- Không để TODO triển khai lớn chỉ nằm trong chat; phải ghi lại trong `docs/TODO.md`.
+- Không commit credential, cookie NotebookLM hoặc secret khác vào repo.
+- Không dùng NotebookLM để suy diễn runtime nếu source code hoặc log thực tế nói khác.
+- Không để TODO lớn chỉ nằm trong chat; các mục chưa xong thật sự phải có trong `docs/TODO.md`.
